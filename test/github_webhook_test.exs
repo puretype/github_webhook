@@ -9,8 +9,9 @@ defmodule GitHubWebhookTest do
     plug(GitHubWebhook, secret: "secret", path: "/gh-webhook", action: {__MODULE__, :gh_webhook})
     plug(:next_in_chain)
 
-    def gh_webhook(_conn, payload, _opts) do
+    def gh_webhook(_conn, payload, opts) do
       Process.put(:payload, payload)
+      Process.put(:opts, opts)
     end
 
     def next_in_chain(conn, _opts) do
@@ -43,6 +44,21 @@ defmodule GitHubWebhookTest do
     assert conn.status == 200
     assert Process.get(:payload) == "hello world"
     assert !Process.get(:next_in_chain_called)
+  end
+
+  test "passes GitHub headers as keyword options" do
+    hexdigest =
+      "sha1=" <>
+        (:crypto.mac(:hmac, :sha, "secret", "hello world") |> Base.encode16(case: :lower))
+
+    conn =
+      conn(:get, "/gh-webhook", "hello world")
+      |> put_req_header("x-hub-signature", hexdigest)
+      |> put_req_header("x-github-hook-installation-target-id", "123")
+      |> DemoPlug.call([])
+
+    assert conn.status == 200
+    assert Process.get(:opts) == [{:installation_target_id, "123"}]
   end
 
   test "when path does not match, skips this plug and proceeds to next one" do
