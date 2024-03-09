@@ -9,6 +9,9 @@ defmodule GitHubWebhook.MixProject do
       start_permanent: Mix.env() == :prod,
       description: "Github webhook plug",
       package: package(),
+      preferred_cli_env: [ci: :test],
+      test_coverage: [tool: ExCoveralls],
+      aliases: aliases(),
       deps: deps()
     ]
   end
@@ -19,8 +22,20 @@ defmodule GitHubWebhook.MixProject do
     ]
   end
 
+  defp aliases do
+    [
+      ci: [
+        "format --check-formatted",
+        "credo --strict",
+        "compile --warnings-as-errors --force",
+        "coveralls.html"
+      ]
+    ]
+  end
+
   defp deps do
     [
+      {:excoveralls, "~> 0.18", only: :test},
       {:credo, "~> 1.0", only: [:dev, :test], runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:plug, "~> 1.4"}
