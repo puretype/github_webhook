@@ -7,6 +7,8 @@ defmodule GitHubWebhook.MixProject do
       version: "0.1.0",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
+      description: "Github webhook plug",
+      package: package(),
       deps: deps()
     ]
   end
@@ -21,6 +23,14 @@ defmodule GitHubWebhook.MixProject do
     [
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:plug, "~> 1.4"}
+    ]
+  end
+
+  defp package do
+    [
+      files: ["lib", "mix.exs", "README.md"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/puretype/github_webhook"}
     ]
   end
 end
