@@ -4,7 +4,7 @@ defmodule GitHubWebhook.MixProject do
   def project do
     [
       app: :github_webhook,
-      version: "0.2.0",
+      version: "0.2.1",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       description: "Github webhook plug",
