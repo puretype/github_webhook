@@ -2,8 +2,11 @@
 
 A fork from [gh_webhook_plug](https://github.com/emilsoman/gh_webhook_plug), with some additional functionality:
 
+- deserializes the payload into an Elixir data structure
 - pass along webhook headers in a keyword list
 - updates for OTP functionality and updated Elixir conventions
+- uses the `X-Hub-Signature-256` header for verification
+    - make sure that you have configured a secret for your webhook
 
 ## Usage
 
