@@ -137,6 +137,7 @@ defmodule GitHubWebhookTest do
         (:crypto.mac(:hmac, :sha, secret, body) |> Base.encode16(case: :lower))
 
     conn(:post, "/gh-webhook", body)
+    |> put_req_header("content-type", "application/json")
     |> put_req_header("x-hub-signature", hexdigest)
   end
 end
