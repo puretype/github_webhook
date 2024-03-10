@@ -31,7 +31,7 @@ defmodule GitHubWebhook do
         secret = get_config(options, :secret)
         {module, function} = get_config(options, :action)
 
-        {:ok, payload, _conn} = read_body(conn)
+        {:ok, payload, conn} = read_body(conn)
         [signature_in_header] = get_req_header(conn, "x-hub-signature")
 
         if verify_signature(payload, secret, signature_in_header) do
