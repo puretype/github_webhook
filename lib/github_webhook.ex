@@ -51,7 +51,7 @@ defmodule GitHubWebhook do
 
         conn = Plug.Parsers.call(conn, @plug_parser)
 
-        [signature_in_header] = get_req_header(conn, "x-hub-signature")
+        [signature_in_header] = get_req_header(conn, "x-hub-signature-256")
 
         if verify_signature(conn.assigns.raw_body, secret, signature_in_header) do
           apply(module, function, [conn, conn.body_params, request_header_opts(conn)])
@@ -67,7 +67,7 @@ defmodule GitHubWebhook do
 
   defp verify_signature(payload, secret, signature_in_header) do
     signature =
-      "sha1=" <> (:crypto.mac(:hmac, :sha, secret, payload) |> Base.encode16(case: :lower))
+      "sha256=" <> (:crypto.mac(:hmac, :sha256, secret, payload) |> Base.encode16(case: :lower))
 
     Plug.Crypto.secure_compare(signature, signature_in_header)
   end

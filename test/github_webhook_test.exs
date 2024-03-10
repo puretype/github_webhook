@@ -25,7 +25,7 @@ defmodule GitHubWebhookTest do
   test "when verification fails, returns a 403" do
     conn =
       gh_webhook_request()
-      |> put_req_header("x-hub-signature", "sha1=wrong_hexdigest")
+      |> put_req_header("x-hub-signature-256", "sha1=wrong_hexdigest")
       |> DemoPlug.call([])
 
     assert conn.status == 403
@@ -146,11 +146,11 @@ defmodule GitHubWebhookTest do
     body = Jason.encode!(body)
 
     hexdigest =
-      "sha1=" <>
-        (:crypto.mac(:hmac, :sha, secret, body) |> Base.encode16(case: :lower))
+      "sha256=" <>
+        (:crypto.mac(:hmac, :sha256, secret, body) |> Base.encode16(case: :lower))
 
     conn(:post, "/gh-webhook", body)
     |> put_req_header("content-type", "application/json")
-    |> put_req_header("x-hub-signature", hexdigest)
+    |> put_req_header("x-hub-signature-256", hexdigest)
   end
 end
