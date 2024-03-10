@@ -22,7 +22,7 @@ defmodule GitHubWebhookTest do
 
   test "when verification fails, returns a 403" do
     conn =
-      conn(:get, "/gh-webhook", "hello world")
+      gh_webhook_request("hello world")
       |> put_req_header("x-hub-signature", "sha1=wrong_hexdigest")
       |> DemoPlug.call([])
 
@@ -32,13 +32,8 @@ defmodule GitHubWebhookTest do
   end
 
   test "when payload is verified, returns a 200" do
-    hexdigest =
-      "sha1=" <>
-        (:crypto.mac(:hmac, :sha, "secret", "hello world") |> Base.encode16(case: :lower))
-
     conn =
-      conn(:get, "/gh-webhook", "hello world")
-      |> put_req_header("x-hub-signature", hexdigest)
+      gh_webhook_request("hello world")
       |> DemoPlug.call([])
 
     assert conn.status == 200
@@ -47,13 +42,8 @@ defmodule GitHubWebhookTest do
   end
 
   test "passes GitHub headers as keyword options" do
-    hexdigest =
-      "sha1=" <>
-        (:crypto.mac(:hmac, :sha, "secret", "hello world") |> Base.encode16(case: :lower))
-
     conn =
-      conn(:get, "/gh-webhook", "hello world")
-      |> put_req_header("x-hub-signature", hexdigest)
+      gh_webhook_request("hello world")
       |> put_req_header("x-github-hook-installation-target-id", "123")
       |> DemoPlug.call([])
 
@@ -63,7 +53,7 @@ defmodule GitHubWebhookTest do
 
   test "when path does not match, skips this plug and proceeds to next one" do
     conn =
-      conn(:get, "/hello")
+      conn(:post, "/hello")
       |> DemoPlug.call([])
 
     assert conn.status == 200
@@ -89,13 +79,8 @@ defmodule GitHubWebhookTest do
 
     Application.put_env(:github_webhook, :secret, "wrong")
 
-    hexdigest =
-      "sha1=" <>
-        (:crypto.mac(:hmac, :sha, "secret", "hello world") |> Base.encode16(case: :lower))
-
     conn =
-      conn(:get, "/gh-webhook", "hello world")
-      |> put_req_header("x-hub-signature", hexdigest)
+      gh_webhook_request("hello world")
       |> DemoPlugParamPresendence.call([])
 
     assert conn.status == 200
@@ -116,12 +101,8 @@ defmodule GitHubWebhookTest do
 
     Application.put_env(:github_webhook, :secret, "1234")
 
-    hexdigest =
-      "sha1=" <> (:crypto.mac(:hmac, :sha, "1234", "hello world") |> Base.encode16(case: :lower))
-
     conn =
-      conn(:get, "/gh-webhook", "hello world")
-      |> put_req_header("x-hub-signature", hexdigest)
+      gh_webhook_request("hello world", "1234")
       |> DemoPlugApplicationSecret.call([])
 
     assert conn.status == 200
@@ -142,15 +123,20 @@ defmodule GitHubWebhookTest do
 
     Application.delete_env(:github_webhook, :secret)
 
-    hexdigest =
-      "sha1=" <> (:crypto.mac(:hmac, :sha, "", "hello world") |> Base.encode16(case: :lower))
-
     conn =
-      conn(:get, "/gh-webhook", "hello world")
-      |> put_req_header("x-hub-signature", hexdigest)
+      gh_webhook_request("hello world", "")
       |> DemoPlugNoSecret.call([])
 
     assert conn.status == 200
     assert Process.get(:payload) == "hello world"
+  end
+
+  defp gh_webhook_request(body, secret \\ "secret") do
+    hexdigest =
+      "sha1=" <>
+        (:crypto.mac(:hmac, :sha, secret, body) |> Base.encode16(case: :lower))
+
+    conn(:post, "/gh-webhook", body)
+    |> put_req_header("x-hub-signature", hexdigest)
   end
 end
