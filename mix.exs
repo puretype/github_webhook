@@ -35,6 +35,7 @@ defmodule GitHubWebhook.MixProject do
 
   defp deps do
     [
+      {:jason, "~> 1.0", optional: true},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test},
       {:credo, "~> 1.0", only: [:dev, :test], runtime: false},
