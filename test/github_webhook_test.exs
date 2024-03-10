@@ -2,6 +2,9 @@ defmodule GitHubWebhookTest do
   use ExUnit.Case, async: true
   use Plug.Test
 
+  @test_body %{"hello" => "world"}
+  @test_body_serialized Jason.encode!(@test_body)
+
   # Demo plug with basic auth and a simple index action
   defmodule DemoPlug do
     use Plug.Builder
@@ -22,7 +25,7 @@ defmodule GitHubWebhookTest do
 
   test "when verification fails, returns a 403" do
     conn =
-      gh_webhook_request("hello world")
+      gh_webhook_request()
       |> put_req_header("x-hub-signature", "sha1=wrong_hexdigest")
       |> DemoPlug.call([])
 
@@ -33,22 +36,31 @@ defmodule GitHubWebhookTest do
 
   test "when payload is verified, returns a 200" do
     conn =
-      gh_webhook_request("hello world")
+      gh_webhook_request()
       |> DemoPlug.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == "hello world"
+    assert Process.get(:payload) == @test_body_serialized
     assert !Process.get(:next_in_chain_called)
   end
 
   test "passes GitHub headers as keyword options" do
     conn =
-      gh_webhook_request("hello world")
+      gh_webhook_request()
       |> put_req_header("x-github-hook-installation-target-id", "123")
       |> DemoPlug.call([])
 
     assert conn.status == 200
     assert Process.get(:opts) == [{:installation_target_id, "123"}]
+  end
+
+  test "deserializes JSON payload" do
+    conn =
+      gh_webhook_request(%{"hello" => "world"})
+      |> DemoPlug.call([])
+
+    assert conn.status == 200
+    assert Process.get(:payload) == @test_body_serialized
   end
 
   test "when path does not match, skips this plug and proceeds to next one" do
@@ -80,11 +92,11 @@ defmodule GitHubWebhookTest do
     Application.put_env(:github_webhook, :secret, "wrong")
 
     conn =
-      gh_webhook_request("hello world")
+      gh_webhook_request(@test_body)
       |> DemoPlugParamPresendence.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == "hello world"
+    assert Process.get(:payload) == @test_body_serialized
   end
 
   test "when secret is not set in params, it uses application setting" do
@@ -102,11 +114,11 @@ defmodule GitHubWebhookTest do
     Application.put_env(:github_webhook, :secret, "1234")
 
     conn =
-      gh_webhook_request("hello world", "1234")
+      gh_webhook_request(%{"hello" => "world"}, "1234")
       |> DemoPlugApplicationSecret.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == "hello world"
+    assert Process.get(:payload) == @test_body_serialized
   end
 
   test "when secret is not set in params or Application setting, it assumes an empty secret" do
@@ -124,14 +136,16 @@ defmodule GitHubWebhookTest do
     Application.delete_env(:github_webhook, :secret)
 
     conn =
-      gh_webhook_request("hello world", "")
+      gh_webhook_request(@test_body, "")
       |> DemoPlugNoSecret.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == "hello world"
+    assert Process.get(:payload) == @test_body_serialized
   end
 
-  defp gh_webhook_request(body, secret \\ "secret") do
+  defp gh_webhook_request(body \\ %{"hello" => "world"}, secret \\ "secret") do
+    body = Jason.encode!(body)
+
     hexdigest =
       "sha1=" <>
         (:crypto.mac(:hmac, :sha, secret, body) |> Base.encode16(case: :lower))
