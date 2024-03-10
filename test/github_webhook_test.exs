@@ -3,7 +3,6 @@ defmodule GitHubWebhookTest do
   use Plug.Test
 
   @test_body %{"hello" => "world"}
-  @test_body_serialized Jason.encode!(@test_body)
 
   # Demo plug with basic auth and a simple index action
   defmodule DemoPlug do
@@ -40,7 +39,7 @@ defmodule GitHubWebhookTest do
       |> DemoPlug.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == @test_body_serialized
+    assert Process.get(:payload) == @test_body
     assert !Process.get(:next_in_chain_called)
   end
 
@@ -60,7 +59,7 @@ defmodule GitHubWebhookTest do
       |> DemoPlug.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == @test_body_serialized
+    assert Process.get(:payload) == @test_body
   end
 
   test "when path does not match, skips this plug and proceeds to next one" do
@@ -96,7 +95,7 @@ defmodule GitHubWebhookTest do
       |> DemoPlugParamPresendence.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == @test_body_serialized
+    assert Process.get(:payload) == @test_body
   end
 
   test "when secret is not set in params, it uses application setting" do
@@ -118,7 +117,7 @@ defmodule GitHubWebhookTest do
       |> DemoPlugApplicationSecret.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == @test_body_serialized
+    assert Process.get(:payload) == @test_body
   end
 
   test "when secret is not set in params or Application setting, it assumes an empty secret" do
@@ -140,7 +139,7 @@ defmodule GitHubWebhookTest do
       |> DemoPlugNoSecret.call([])
 
     assert conn.status == 200
-    assert Process.get(:payload) == @test_body_serialized
+    assert Process.get(:payload) == @test_body
   end
 
   defp gh_webhook_request(body \\ %{"hello" => "world"}, secret \\ "secret") do

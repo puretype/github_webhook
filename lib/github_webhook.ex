@@ -14,6 +14,24 @@ defmodule GitHubWebhook do
     "x-github-hook-installation-target-id" => :installation_target_id
   }
 
+  defmodule CacheBodyReader do
+    @moduledoc false
+
+    def read_body(conn, opts) do
+      {:ok, body, conn} = Plug.Conn.read_body(conn, opts)
+      conn = update_in(conn.assigns[:raw_body], &[body | &1 || []])
+      {:ok, body, conn}
+    end
+  end
+
+  @plug_parser Plug.Parsers.init(
+                 parsers: [:json],
+                 body_reader: {CacheBodyReader, :read_body, []},
+                 json_decoder: Application.compile_env(:github_webhook, :json_library, Jason)
+               )
+
+  #
+
   @impl true
   def init(options) do
     options
@@ -31,11 +49,12 @@ defmodule GitHubWebhook do
         secret = get_config(options, :secret)
         {module, function} = get_config(options, :action)
 
-        {:ok, payload, conn} = read_body(conn)
+        conn = Plug.Parsers.call(conn, @plug_parser)
+
         [signature_in_header] = get_req_header(conn, "x-hub-signature")
 
-        if verify_signature(payload, secret, signature_in_header) do
-          apply(module, function, [conn, payload, request_header_opts(conn)])
+        if verify_signature(conn.assigns.raw_body, secret, signature_in_header) do
+          apply(module, function, [conn, conn.body_params, request_header_opts(conn)])
           conn |> send_resp(200, "OK") |> halt()
         else
           conn |> send_resp(403, "Forbidden") |> halt()
